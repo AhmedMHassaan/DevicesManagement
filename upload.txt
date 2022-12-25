@@ -1,0 +1,44 @@
+ LocalDatabaseConnection.getConnection().setAutoCommit(false);
+
+                    Department departmentsResponse = departmentsRepository.getDepartmentOrInsert(device.getCurrentDepartment().getDepartmentName());
+                    if (departmentsResponse == null) {
+                        uploadObj.setUploadingState(new UploadingStatus("لم يتم إضافة الفرع بنجاح"));
+                    }
+
+                    int depId = departmentsResponse.getDepartmentId();
+//                    System.out.println("Dep is "+departmentsResponse.getDepartmentName() + " and id is => "+depId);
+
+                    // GET BRAND ID :
+                    Brand brand = brandRepo.getBrandIdOrInsert(device.getBrand().getBrandName());
+                    int brandId = brand.getBrandId();
+
+//                    System.out.println("Brand is "+brand.getBrandName()+ " and id is => "+brandId);
+                    // GET MODEL ID :
+                    Model model = modelsRepo.getLocalModelIdOrInsert(device.getModel().getModelName());
+                    int modelId = model.getModelId();
+
+                    System.out.println("Dep Id => " + depId + " brandId => " + brandId + " modelId " + modelId);
+                    System.out.println("Now Will Addin " + device.getSerialNumber());
+                    String errorMsg = insertLocalDevice(new Device(device.getSerialNumber(), device.getDeviceName(), departmentsResponse, model), false);
+
+                    if (errorMsg == null) {
+                        uploadObj.setUploadingState(new UploadingStatus(true, "جاهز للرفع"));
+                    } else {
+                        rollback(LocalDatabaseConnection.getConnection());
+                        if (errorMsg.contains("column serial_number is not unique")) {
+
+                            uploadObj.setUploadingState(new UploadingStatus(false, "جهاز مكرر"));
+                        } else {
+                            uploadObj.setUploadingState(new UploadingStatus(false, errorMsg));
+                        }
+                    }
+
+                    System.out.println("Error => " + errorMsg);
+
+                    devicesUploadsResponse.add(uploadObj);
+
+                    if (true) {
+                        return;
+                    }
+                    LocalDatabaseConnection.getConnection().commit();
+                    LocalDatabaseConnection.getConnection().setAutoCommit(true);
